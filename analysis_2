@@ -104,7 +104,7 @@ transfer_functions = [
     {"name": "V6", "func": lambda v: 1-np.exp(-v/2), "type": "v", "inertia": "decreasing"}
 ]
 
-def binary_pso(func_info, transfer_func, num_particles=30, max_iter=10, runs=1):
+def binary_pso(func_info, transfer_func, num_particles=30, max_iter=500, runs=20):
     dim = func_info["dim"]
     search_range = func_info["range"]
     func = func_info["func"]
