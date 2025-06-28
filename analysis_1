@@ -1,0 +1,321 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import math
+from scipy.special import erf, erfinv
+from datetime import datetime
+
+# Create output directory
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+output_dir = f"bpso_results_{timestamp}"
+os.makedirs(output_dir, exist_ok=True)
+
+# Benchmark functions definitions
+def shifted_sphere(x):
+    return np.sum((x - 50)**2) + 450
+
+def shifted_schwefel(x):
+    return np.sum((x - 50)**2) + 450
+
+def shifted_rotated_elliptic(x):
+    dim = len(x)
+    weights = np.array([1000**(i/(dim-1)) for i in range(dim)])
+    return np.sum(weights * (x - 50)**2) + 450
+
+def shifted_schwefel_noise(x):
+    return np.sum((x - 50)**2) * (1 + 0.1 * np.random.normal(0, 1)) + 450
+
+def schwefel_global_opt_bound(x):
+    return 418.9829 * len(x) - np.sum(x * np.sin(np.sqrt(np.abs(x)))) + 310
+
+def shifted_rosenbrock(x):
+    x_shifted = x - 50 + 1
+    return np.sum(100 * (x_shifted[1:] - x_shifted[:-1]**2)**2 + (x_shifted[:-1] - 1)**2) + 390
+
+def shifted_rotated_griewank(x):
+    dim = len(x)
+    sum_part = np.sum((x - 300)**2) / 4000
+    prod_part = np.prod(np.cos((x - 300) / np.sqrt(np.arange(1, dim+1))))
+    return sum_part - prod_part + 1 + 180
+
+def shifted_rotated_ackley(x):
+    dim = len(x)
+    a = 20
+    b = 0.2
+    c = 2 * np.pi
+    x_shifted = x - 32
+    sum1 = np.sum(x_shifted**2)
+    sum2 = np.sum(np.cos(c * x_shifted))
+    term1 = -a * np.exp(-b * np.sqrt(sum1 / dim))
+    term2 = -np.exp(sum2 / dim)
+    return term1 + term2 + a + np.exp(1) + 140
+
+def shifted_rastrigin(x):
+    x_shifted = x - 2.5
+    return 10 * len(x) + np.sum(x_shifted**2 - 10 * np.cos(2 * np.pi * x_shifted)) + 330
+
+def shifted_rotated_rastrigin(x):
+    x_shifted = x - 2.5
+    return 10 * len(x) + np.sum(x_shifted**2 - 10 * np.cos(2 * np.pi * x_shifted)) + 330
+
+def shifted_rotated_weierstrass(x):
+    kmax = 20
+    a, b = 0.5, 3
+    dim = len(x)
+    x_shifted = x - 0.25
+    total = 0
+    for i in range(dim):
+        for k in range(kmax+1):
+            total += (a**k) * np.cos(2 * np.pi * (b**k) * (x_shifted[i] + 0.5))
+    return total - dim * np.sum([(a**k) * np.cos(2 * np.pi * (b**k) * 0.5) for k in range(kmax+1)]) + 90
+
+def schwefel(x):
+    return 418.9829 * len(x) - np.sum(x * np.sin(np.sqrt(np.abs(x)))) + 460
+
+def expanded_griewank_rosenbrock(x):
+    griewank_part = 1 + np.sum(x**2) / 4000 - np.prod(np.cos(x / np.sqrt(np.arange(1, len(x)+1))))
+    rosenbrock_part = np.sum(100 * (x[1:] - x[:-1]**2)**2 + (x[:-1] - 1)**2)
+    return (griewank_part + rosenbrock_part) / 2 + 130
+
+def shifted_rotated_expanded_scaffer(x):
+    x_shifted = x - 50
+    z = np.sqrt(x_shifted[:-1]**2 + x_shifted[1:]**2)
+    return np.sum(0.5 + (np.sin(z)**2 - 0.5) / (1 + 0.001 * z**2)**2) + 300
+
+def hybrid_composition(x):
+    return np.sum(x**2 - 10 * np.cos(2 * np.pi * x) + 10 * len(x)) + 120
+
+def rotated_hybrid_composition(x):
+    return hybrid_composition(x)
+
+def rotated_hybrid_composition_noise(x):
+    return hybrid_composition(x) * (1 + 0.1 * np.random.normal(0, 1))
+
+# Define all benchmark functions with their ranges and minima
+benchmark_functions = [
+    {"name": "F1: Shifted sphere", "func": shifted_sphere, "range": [-100, 100], "dim": 5, "fmin": 450},
+    {"name": "F2: Shifted Schwefel", "func": shifted_schwefel, "range": [-100, 100], "dim": 5, "fmin": 450},
+    {"name": "F3: Shifted rotated elliptic", "func": shifted_rotated_elliptic, "range": [-100, 100], "dim": 5, "fmin": 450},
+    {"name": "F4: Shifted Schwefel with noise", "func": shifted_schwefel_noise, "range": [-100, 100], "dim": 5, "fmin": 450},
+    {"name": "F5: Schwefel global opt bound", "func": schwefel_global_opt_bound, "range": [-100, 100], "dim": 5, "fmin": 310},
+    {"name": "F6: Shifted Rosenbrock", "func": shifted_rosenbrock, "range": [-100, 100], "dim": 5, "fmin": 390},
+    {"name": "F7: Shifted rotated Griewank", "func": shifted_rotated_griewank, "range": [0, 600], "dim": 5, "fmin": 180},
+    {"name": "F8: Shifted rotated Ackley", "func": shifted_rotated_ackley, "range": [-32, 32], "dim": 5, "fmin": 140},
+    {"name": "F9: Shifted Rastrigin", "func": shifted_rastrigin, "range": [-5, 5], "dim": 5, "fmin": 330},
+    {"name": "F10: Shifted rotated Rastrigin", "func": shifted_rotated_rastrigin, "range": [-5, 5], "dim": 5, "fmin": 330},
+    {"name": "F11: Shifted rotated Weierstrass", "func": shifted_rotated_weierstrass, "range": [-0.5, 0.5], "dim": 5, "fmin": 90},
+    {"name": "F12: Schwefel", "func": schwefel, "range": [-100, 100], "dim": 5, "fmin": 460},
+    {"name": "F13: Expanded Griewank+Rosenbrock", "func": expanded_griewank_rosenbrock, "range": [-3, 1], "dim": 5, "fmin": 130},
+    {"name": "F14: Shifted rotated expanded Scaffer", "func": shifted_rotated_expanded_scaffer, "range": [-100, 100], "dim": 5, "fmin": 300},
+    {"name": "F15: Hybrid composition", "func": hybrid_composition, "range": [-5, 5], "dim": 10, "fmin": 120},
+    {"name": "F16: Rotated hybrid composition", "func": rotated_hybrid_composition, "range": [-5, 5], "dim": 10, "fmin": 120},
+    {"name": "F17: Rotated hybrid composition with noise", "func": rotated_hybrid_composition_noise, "range": [-5, 5], "dim": 10, "fmin": 120}
+]
+
+# Transfer functions
+def s1(v):
+    return 1 / (1 + np.exp(-v))
+
+def s2(v):
+    return 1 / (1 + np.exp(-v))
+
+def s3(v):
+    return 1 / (1 + np.exp(-v/2))
+
+def s4(v):
+    return 1 / (1 + np.exp(-v/3))
+
+def v1(v):
+    return np.abs(erf(np.sqrt(np.pi) * v))
+
+def v2(v):
+    return np.abs(np.tanh(v))
+
+def v3(v):
+    return np.abs(v / np.sqrt(1 + v**2))
+
+def v4(v):
+    return np.abs(2/np.pi * np.arctan(np.pi/2 * v))
+
+def v5(v):
+    return 2/np.pi * np.arctan(v**2)
+
+def v6(v):
+    return 1 - np.exp(-v/2)
+
+transfer_functions = [
+    {"name": "S1", "func": s1, "type": "s", "inertia": "increasing"},
+    {"name": "S2", "func": s2, "type": "s", "inertia": "increasing"},
+    {"name": "S3", "func": s3, "type": "s", "inertia": "increasing"},
+    {"name": "S4", "func": s4, "type": "s", "inertia": "increasing"},
+    {"name": "V1", "func": v1, "type": "v", "inertia": "decreasing"},
+    {"name": "V2", "func": v2, "type": "v", "inertia": "decreasing"},
+    {"name": "V3", "func": v3, "type": "v", "inertia": "decreasing"},
+    {"name": "V4", "func": v4, "type": "v", "inertia": "decreasing"},
+    {"name": "V5", "func": v5, "type": "v", "inertia": "decreasing"},
+    {"name": "V6", "func": v6, "type": "v", "inertia": "decreasing"}
+]
+
+# BPSO implementation
+def binary_pso(func_info, transfer_func, num_particles=30, max_iter=500, runs=20):
+    dim = func_info["dim"]
+    search_range = func_info["range"]
+    func = func_info["func"]
+    c1, c2 = 1.49, 1.49
+    w_initial, w_final = 1.1, 0.1
+    
+    all_best_fitness = np.zeros((runs, max_iter))
+    all_final_fitness = np.zeros(runs)
+    
+    for run in range(runs):
+        particles = np.random.uniform(search_range[0], search_range[1], (num_particles, dim))
+        velocities = np.zeros((num_particles, dim))
+        personal_best_positions = particles.copy()
+        personal_best_scores = np.array([func(p) for p in particles])
+        
+        global_best_idx = np.argmin(personal_best_scores)
+        global_best_position = personal_best_positions[global_best_idx].copy()
+        global_best_score = personal_best_scores[global_best_idx]
+        
+        for iter in range(max_iter):
+            if transfer_func["inertia"] == "increasing":
+                w = w_final + (w_initial - w_final) * iter / max_iter
+            else:
+                w = w_initial - (w_initial - w_final) * iter / max_iter
+            
+            for i in range(num_particles):
+                r1, r2 = np.random.random(dim), np.random.random(dim)
+                velocities[i] = w * velocities[i] + \
+                                c1 * r1 * (personal_best_positions[i] - particles[i]) + \
+                                c2 * r2 * (global_best_position - particles[i])
+                
+                tf_values = transfer_func["func"](velocities[i])
+                
+                if transfer_func["type"] == "s":
+                    r = np.random.random(dim)
+                    particles[i] = np.where(r < tf_values, 
+                                          np.random.uniform(search_range[0], search_range[1], dim), 
+                                          particles[i])
+                else:
+                    r = np.random.random(dim)
+                    particles[i] = np.where(r < tf_values, 
+                                          particles[i] * (1 - tf_values), 
+                                          particles[i] * tf_values)
+                
+                particles[i] = np.clip(particles[i], search_range[0], search_range[1])
+                
+                current_fitness = func(particles[i])
+                
+                if current_fitness < personal_best_scores[i]:
+                    personal_best_scores[i] = current_fitness
+                    personal_best_positions[i] = particles[i].copy()
+                    
+                    if current_fitness < global_best_score:
+                        global_best_score = current_fitness
+                        global_best_position = particles[i].copy()
+            
+            all_best_fitness[run, iter] = global_best_score
+        
+        all_final_fitness[run] = global_best_score
+    
+    avg_best_fitness = np.mean(all_best_fitness, axis=0)
+    avg_final_fitness = np.mean(all_final_fitness)
+    std_final_fitness = np.std(all_final_fitness)
+    
+    return avg_best_fitness, avg_final_fitness, std_final_fitness
+
+# Run experiments and save results
+def run_experiments():
+    results = {}
+    
+    for func_info in benchmark_functions:
+        func_name = func_info["name"].split(":")[0]
+        results[func_name] = {}
+        print(f"\nRunning experiments for {func_name}...")
+        
+        # Store performance metrics for each transfer function
+        tf_performance = []
+        tf_names = []
+        
+        for tf in transfer_functions:
+            print(f"  Testing {tf['name']}...", end=" ", flush=True)
+            avg_fitness, avg_final, std_final = binary_pso(func_info, tf)
+            results[func_name][tf["name"]] = {
+                "avg_fitness": avg_fitness,
+                "avg_final": avg_final,
+                "std_final": std_final
+            }
+            tf_performance.append(avg_final)
+            tf_names.append(tf["name"])
+            print(f"Done. Final fitness: {avg_final:.2f} ± {std_final:.2f}")
+        
+        # Determine best and worst performing transfer functions
+        best_idx = np.argmin(tf_performance)
+        worst_idx = np.argmax(tf_performance)
+        best_tf = tf_names[best_idx]
+        worst_tf = tf_names[worst_idx]
+        
+        # Plot performance comparison with error bars
+        plt.figure(figsize=(12, 6))
+        x_pos = np.arange(len(tf_names))
+        final_values = [results[func_name][tf]["avg_final"] for tf in tf_names]
+        std_values = [results[func_name][tf]["std_final"] for tf in tf_names]
+        
+        plt.bar(x_pos, final_values, yerr=std_values, capsize=5, alpha=0.7)
+        plt.xticks(x_pos, tf_names, rotation=45)
+        plt.xlabel("Transfer Function")
+        plt.ylabel("Final Fitness Value")
+        plt.title(f"Performance Comparison for {func_name}\n"
+                 f"Best: {best_tf} ({final_values[best_idx]:.2f} ± {std_values[best_idx]:.2f})\n"
+                 f"Worst: {worst_tf} ({final_values[worst_idx]:.2f} ± {std_values[worst_idx]:.2f})")
+        plt.grid(True, linestyle='--', alpha=0.6)
+        
+        # Highlight best and worst
+        plt.gca().get_children()[best_idx].set_color('green')
+        plt.gca().get_children()[worst_idx].set_color('red')
+        
+        plt.tight_layout()
+        
+        # Save plot
+        plot_filename = f"{output_dir}/{func_name}_performance"
+        plt.savefig(f"{plot_filename}.svg", format="svg")
+        plt.savefig(f"{plot_filename}.png", format="png", dpi=300)
+        plt.close()
+    
+    return results
+
+# Save detailed results to text file
+def save_detailed_results(results):
+    with open(f"{output_dir}/detailed_results.txt", "w") as f:
+        f.write("Binary PSO Detailed Results\n")
+        f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Output directory: {os.path.abspath(output_dir)}\n\n")
+        
+        for func_name, func_data in results.items():
+            f.write(f"\n{func_name}\n")
+            f.write("="*50 + "\n")
+            
+            # Sort transfer functions by performance
+            sorted_tfs = sorted(func_data.items(), key=lambda x: x[1]["avg_final"])
+            
+            f.write(f"{'Transfer Function':<10} {'Final Fitness':<15} {'Std Dev':<10} {'Performance'}\n")
+            f.write("-"*50 + "\n")
+            
+            for i, (tf_name, tf_data) in enumerate(sorted_tfs):
+                performance = ""
+                if i == 0:
+                    performance = "BEST"
+                elif i == len(sorted_tfs)-1:
+                    performance = "WORST"
+                
+                f.write(f"{tf_name:<10} {tf_data['avg_final']:<15.4f} {tf_data['std_final']:<10.4f} {performance}\n")
+            
+            f.write("\n")
+
+# Main execution
+if __name__ == "__main__":
+    print(f"Starting Binary PSO experiments. Results will be saved in: {os.path.abspath(output_dir)}")
+    results = run_experiments()
+    save_detailed_results(results)
+    print("\nAll experiments completed successfully!")
+    print(f"Results saved in: {os.path.abspath(output_dir)}")
