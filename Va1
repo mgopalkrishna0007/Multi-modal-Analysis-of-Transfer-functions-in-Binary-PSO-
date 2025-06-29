@@ -203,7 +203,7 @@ def evaluate_particle(binary_particle, func_info):
     # Convert to NumPy array before evaluation
     return func_info["func"](np.array(real_position))
 
-def binary_pso(func_info, transfer_func, num_particles=30, max_iter=100, runs=30):
+def binary_pso(func_info, transfer_func, num_particles=30, max_iter=500, runs=30):
     dim = func_info["dim"]
     search_range = func_info["range"]
     particle_dim = dim * BITS_PER_VAR
