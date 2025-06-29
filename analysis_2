@@ -87,7 +87,39 @@ benchmark_functions = [
     
     {"name": "F17: Rotated hybrid composition with noise", 
      "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) * (1 + 0.1*np.random.normal(0, 1)) + 120,
-     "range": [-5, 5], "dim": 10, "fmin": 120}
+     "range": [-5, 5], "dim": 10, "fmin": 120},
+    
+    {"name": "F18: Rotated hybrid composition function", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 10,
+     "range": [-5, 5], "dim": 10, "fmin": 10},
+    
+    {"name": "F19: Rotated hybrid composition with narrow basin", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 10,
+     "range": [-5, 5], "dim": 10, "fmin": 10},
+    
+    {"name": "F20: Rotated hybrid composition with global opt on bounds", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 10,
+     "range": [-5, 5], "dim": 10, "fmin": 10},
+    
+    {"name": "F21: Rotated hybrid composition function", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 360,
+     "range": [-5, 5], "dim": 10, "fmin": 360},
+    
+    {"name": "F22: Rotated hybrid composition with high condition number", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 360,
+     "range": [-5, 5], "dim": 10, "fmin": 360},
+    
+    {"name": "F23: Non-continuous rotated hybrid composition", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 360,
+     "range": [-5, 5], "dim": 10, "fmin": 360},
+    
+    {"name": "F24: Rotated hybrid composition function", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 260,
+     "range": [-5, 5], "dim": 10, "fmin": 260},
+    
+    {"name": "F25: Rotated hybrid composition without bounds", 
+     "func": lambda x: np.sum(x**2 - 10*np.cos(2*np.pi*x) + 10) + 260,
+     "range": [-2, 5], "dim": 10, "fmin": 260}
 ]
 
 # Transfer functions
@@ -272,7 +304,57 @@ def save_text_results(func_name, tf_results):
         for i in range(num_iters):
             values = [f"{tf[1]['avg_fitness'][i]:.4f}" for tf in sorted_tfs]
             f.write(f"{i}," + ",".join(values) + "\n")
-            
+
+def generate_performance_heatmap(global_results):
+    # Prepare data for heatmap
+    func_names = [f"F{i+1}" for i in range(len(benchmark_functions))]
+    tf_names = [tf["name"] for tf in transfer_functions]
+    
+    # Create a matrix of performance values
+    performance_matrix = np.zeros((len(func_names), len(tf_names)))
+    
+    for i, func_name in enumerate(global_results.keys()):
+        for j, tf_name in enumerate(tf_names):
+            performance_matrix[i, j] = global_results[func_name][tf_name]["avg_final"]
+    
+    # Normalize the performance matrix (0 = best, 1 = worst for each function)
+    normalized_matrix = np.zeros_like(performance_matrix)
+    for i in range(len(func_names)):
+        min_val = np.min(performance_matrix[i])
+        max_val = np.max(performance_matrix[i])
+        if max_val != min_val:
+            normalized_matrix[i] = (performance_matrix[i] - min_val) / (max_val - min_val)
+    
+    # Create the heatmap
+    plt.figure(figsize=(16, 12))
+    plt.imshow(normalized_matrix, cmap='RdYlGn_r', aspect='auto', interpolation='nearest')
+    
+    # Add colorbar
+    cbar = plt.colorbar()
+    cbar.set_label('Normalized Performance (0=best, 1=worst for each function)')
+    
+    # Add labels
+    plt.xticks(np.arange(len(tf_names)), tf_names, rotation=45)
+    plt.yticks(np.arange(len(func_names)), func_names)
+    plt.xlabel('Transfer Functions')
+    plt.ylabel('Benchmark Functions')
+    plt.title('Performance Heatmap of All Transfer Functions Across All Benchmark Functions')
+    
+    # Add text annotations
+    for i in range(len(func_names)):
+        for j in range(len(tf_names)):
+            plt.text(j, i, f"{performance_matrix[i,j]:.1f}", 
+                    ha="center", va="center", color="black", fontsize=8)
+    
+    plt.tight_layout()
+    
+    # Save the heatmap
+    heatmap_path = os.path.join(main_output_dir, "4_Performance_Heatmap.png")
+    plt.savefig(heatmap_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"Heatmap saved to: {heatmap_path}")
+
 def run_experiments():
     global_results = {}
     
@@ -319,6 +401,9 @@ def run_experiments():
             summary_file.write(f"  Worst: {worst_tf[0]} ({worst_tf[1]['avg_final']:.2f}±{worst_tf[1]['std_final']:.2f})\n")
             summary_file.write("-"*60 + "\n")
     
+    # Generate performance heatmap after all experiments
+    generate_performance_heatmap(global_results)
+    
     return global_results
 
 if __name__ == "__main__":
@@ -333,3 +418,4 @@ if __name__ == "__main__":
     print(f"  1. Convergence plots: {os.path.abspath(convergence_dir)}")
     print(f"  2. Results data: {os.path.abspath(results_dir)}")
     print(f"  3. Performance plots: {os.path.abspath(performance_dir)}")
+    print(f"  4. Performance heatmap: {os.path.abspath(main_output_dir)}/4_Performance_Heatmap.png")
