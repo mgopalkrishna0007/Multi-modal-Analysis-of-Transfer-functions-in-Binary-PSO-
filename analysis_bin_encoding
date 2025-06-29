@@ -1,3 +1,6 @@
+# binary-encoded BPSO for 25 benchmark functions from CEC 2005 
+# compares v shape flip based  (decreasing ) with s shape set based (increasing) transfer functions
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -145,16 +148,19 @@ benchmark_functions = [
 ]
 # Transfer functions
 transfer_functions = [
+
     {"name": "S1", "func": lambda v: 1/(1+np.exp(-v)), "type": "s", "inertia": "increasing"},
     {"name": "S2", "func": lambda v: 1/(1+np.exp(-v)), "type": "s", "inertia": "increasing"},
     {"name": "S3", "func": lambda v: 1/(1+np.exp(-v/2)), "type": "s", "inertia": "increasing"},
     {"name": "S4", "func": lambda v: 1/(1+np.exp(-v/3)), "type": "s", "inertia": "increasing"},
+
+
     {"name": "V1", "func": lambda v: np.abs(erf(np.sqrt(np.pi)*v)), "type": "v", "inertia": "decreasing"},
     {"name": "V2", "func": lambda v: np.abs(np.tanh(v)), "type": "v", "inertia": "decreasing"},
     {"name": "V3", "func": lambda v: np.abs(v/np.sqrt(1+v**2)), "type": "v", "inertia": "decreasing"},
     {"name": "V4", "func": lambda v: np.abs(2/np.pi*np.arctan(np.pi/2*v)), "type": "v", "inertia": "decreasing"},
     {"name": "V5", "func": lambda v: 2/np.pi*np.arctan(v**2), "type": "v", "inertia": "decreasing"},
-    {"name": "V6", "func": lambda v: 1-np.exp((-1/2)*np.abs(v)), "type": "v", "inertia": "decreasing"}
+    {"name": "V6", "func": lambda v: 1-np.exp((-1/2)*np.abs(v)), "type": "v", "inertia": "decreasing"},
 ]
 
 def initialize_particles(func_info, num_particles):
@@ -193,7 +199,7 @@ def evaluate_particle(binary_particle, func_info):
     # Convert to NumPy array before evaluation
     return func_info["func"](np.array(real_position))
 
-def binary_pso(func_info, transfer_func, num_particles=30, max_iter=100, runs=20):
+def binary_pso(func_info, transfer_func, num_particles=30, max_iter=500, runs=30):
     dim = func_info["dim"]
     search_range = func_info["range"]
     particle_dim = dim * BITS_PER_VAR
@@ -221,7 +227,10 @@ def binary_pso(func_info, transfer_func, num_particles=30, max_iter=100, runs=20
         global_best_score = personal_best_scores[global_best_idx]
         
         for iter in range(max_iter):
-            w = w_initial - (w_initial - w_final) * iter / max_iter
+            if transfer_func["inertia"] == "increasing":
+                w = w_final + (w_initial - w_final) * iter / max_iter
+            else:
+                w = w_initial - (w_initial - w_final) * iter / max_iter
             
             for i in range(num_particles):
                 # Update velocity
