@@ -152,10 +152,10 @@ transfer_functions = [
     {"name": "S2", "func": lambda v: 1/(1+np.exp(-v)), "type": "s", "inertia": "decreasing"},
     {"name": "S3", "func": lambda v: 1/(1+np.exp(-v/2)), "type": "s", "inertia": "decreasing"},
     {"name": "S4", "func": lambda v: 1/(1+np.exp(-v/3)), "type": "s", "inertia": "decreasing"},
-    {"name": "S1", "func": lambda v: 1/(1+np.exp(-v)), "type": "v", "inertia": "decreasing"},
-    {"name": "S2", "func": lambda v: 1/(1+np.exp(-v)), "type": "v", "inertia": "decreasing"},
-    {"name": "S3", "func": lambda v: 1/(1+np.exp(-v/2)), "type": "v", "inertia": "decreasing"},
-    {"name": "S4", "func": lambda v: 1/(1+np.exp(-v/3)), "type": "v", "inertia": "decreasing"},
+    {"name": "s1", "func": lambda v: 1/(1+np.exp(-v)), "type": "v", "inertia": "decreasing"},
+    {"name": "s2", "func": lambda v: 1/(1+np.exp(-v)), "type": "v", "inertia": "decreasing"},
+    {"name": "s3", "func": lambda v: 1/(1+np.exp(-v/2)), "type": "v", "inertia": "decreasing"},
+    {"name": "s4", "func": lambda v: 1/(1+np.exp(-v/3)), "type": "v", "inertia": "decreasing"},
 
 
     # {"name": "V1", "func": lambda v: np.abs(erf(np.sqrt(np.pi)*v)), "type": "v", "inertia": "decreasing"},
