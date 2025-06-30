@@ -149,17 +149,17 @@ benchmark_functions = [
 # Transfer functions
 transfer_functions = [
 
-    {"name": "S1", "func": lambda v: 1/(1+np.exp(-v)), "type": "s", "inertia": "increasing"},
+    {"name": "S1", "func": lambda v: 1/(1+np.exp(-2*v)), "type": "s", "inertia": "increasing"},
     {"name": "S2", "func": lambda v: 1/(1+np.exp(-v)), "type": "s", "inertia": "increasing"},
     {"name": "S3", "func": lambda v: 1/(1+np.exp(-v/2)), "type": "s", "inertia": "increasing"},
     {"name": "S4", "func": lambda v: 1/(1+np.exp(-v/3)), "type": "s", "inertia": "increasing"},
 
 
-    {"name": "V1", "func": lambda v: np.abs(erf(np.sqrt(np.pi)*v)), "type": "v", "inertia": "decreasing"},
+    {"name": "V1", "func": lambda v: np.abs(erf(np.sqrt(np.pi)*v/2)), "type": "v", "inertia": "decreasing"},
     {"name": "V2", "func": lambda v: np.abs(np.tanh(v)), "type": "v", "inertia": "decreasing"},
     {"name": "V3", "func": lambda v: np.abs(v/np.sqrt(1+v**2)), "type": "v", "inertia": "decreasing"},
-    {"name": "V4", "func": lambda v: np.abs(2/np.pi*np.arctan(np.pi/2*v)), "type": "v", "inertia": "decreasing"},
-    {"name": "V5", "func": lambda v: 2/np.pi*np.arctan(v**2), "type": "v", "inertia": "decreasing"},
+    {"name": "V4", "func": lambda v: np.abs((2/np.pi)*np.arctan(np.pi/2*v)), "type": "v", "inertia": "decreasing"},
+    {"name": "V5", "func": lambda v: (2/np.pi)*(np.arctan(v**2)), "type": "v", "inertia": "decreasing"},
     {"name": "V6", "func": lambda v: 1-np.exp((-1/2)*np.abs(v)), "type": "v", "inertia": "decreasing"},
 ]
 
